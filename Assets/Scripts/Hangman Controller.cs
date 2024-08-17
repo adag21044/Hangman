@@ -1,6 +1,8 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.Networking;
+using System.Collections;
 
 public class HangmanController : MonoBehaviour
 {
@@ -9,7 +11,6 @@ public class HangmanController : MonoBehaviour
     [SerializeField] GameObject letterContainer;
     [SerializeField] GameObject[] hangmanStages;
     [SerializeField] GameObject letterButton;
-    [SerializeField] TextAsset possibleWord;
 
     private string word;
     private int incorrectGuesses;
@@ -18,7 +19,7 @@ public class HangmanController : MonoBehaviour
     private void Start()
     {
         InitializeButtons();
-        InitializeGame();
+        StartCoroutine(FetchWordFromAPI());
     }
 
     private void InitializeButtons()
@@ -48,9 +49,6 @@ public class HangmanController : MonoBehaviour
             stage.SetActive(false);
         }
 
-        // Generate a new word
-        word = GenerateWord().ToUpper();
-
         foreach(char letter in word)
         {
             var temp = Instantiate(letterContainer, wordContainer.transform);
@@ -64,11 +62,44 @@ public class HangmanController : MonoBehaviour
         temp.GetComponent<Button>().onClick.AddListener(() => CheckLetter(((char)i).ToString()));
     }
 
-    private string GenerateWord()
+    private IEnumerator FetchWordFromAPI()
     {
-        string[] wordList = possibleWord.text.Split('\n');
-        string line = wordList[Random.Range(0, wordList.Length)];
-        return line.Trim();
+        string apiUrl = "https://random-word-api.herokuapp.com/word?number=1";
+
+        using (UnityWebRequest request = CreateWebRequest(apiUrl))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string jsonResponse = request.downloadHandler.text;
+                word = jsonResponse.Trim(new char[] { '[', ']', '"' }).ToUpper(); // JSON yanıtını temizle ve kelimeyi büyük harfe çevir
+                InitializeGame();
+            }
+            else
+            {
+                Debug.LogError("Error fetching word: " + request.error);
+            }
+        }
+    }
+
+
+
+
+
+    private UnityWebRequest CreateWebRequest(string url)
+    {
+        UnityWebRequest request = UnityWebRequest.Get(url);
+        request.certificateHandler = new BypassCertificate(); // Sertifika kontrolünü atla
+        return request;
+    }
+
+    private class BypassCertificate : CertificateHandler
+    {
+        protected override bool ValidateCertificate(byte[] certificateData)
+        {
+            return true; // Sertifika kontrolünü her zaman geçerli kıl
+        }
     }
 
     private void CheckLetter(string inputLetter)
@@ -95,7 +126,6 @@ public class HangmanController : MonoBehaviour
         CheckOutcome();
     }
 
-
     private void CheckOutcome()
     {
         if(correctGuesses == word.Length) // Win condition
@@ -104,7 +134,7 @@ public class HangmanController : MonoBehaviour
             {
                 wordContainer.GetComponentsInChildren<TextMeshProUGUI>()[i].color = Color.green;
             }
-            Invoke("InitializeGame", 3f);
+            Invoke("StartNewGame", 3f); // 3 saniye sonra yeni oyuna başla
         }
         
         if(incorrectGuesses == hangmanStages.Length) // Lose condition
@@ -114,7 +144,13 @@ public class HangmanController : MonoBehaviour
                 wordContainer.GetComponentsInChildren<TextMeshProUGUI>()[i].color = Color.red;
                 wordContainer.GetComponentsInChildren<TextMeshProUGUI>()[i].text = word[i].ToString();
             }
-            Invoke("InitializeGame", 3f);
+            Invoke("StartNewGame", 3f); // 3 saniye sonra yeni oyuna başla
         }
     }
+
+    private void StartNewGame()
+    {
+        StartCoroutine(FetchWordFromAPI()); // Yeni kelimeyi çek
+    }
+
 }
