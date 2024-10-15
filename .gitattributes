@@ -1,9 +1,13 @@
-
-*.cs linguist-language=CSharp
-
-
-*.shader linguist-vendored
-*.hlsl linguist-vendored
-*.cginc linguist-vendored
-*.compute linguist-vendored
-*.meta linguist-detectable=false
+*.cs linguist-language=C# 
+*.unity linguist-language=Text
+*.meta linguist-language=Text
+*.shader linguist-language=Text 
+*.cginc linguist-language=Text 
+*.dll linguist-vendored
+*.exe linguist-vendored
+*.pdf linguist-vendored
+*.so linguist-vendored
+*.jar linguist-vendored
+*.a linguist-vendored
+*.lib linguist-vendored
+*.obj linguist-vendored
